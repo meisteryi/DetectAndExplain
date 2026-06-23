@@ -22,8 +22,9 @@ class ResultScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () {
             ref.read(geminiNotifierProvider.notifier).reset();
+            ref.read(textSelectionProvider.notifier).clear();
             ref.read(imageProvider.notifier).clear();
-            Navigator.of(context).pop();
+            Navigator.of(context).popUntil((route) => route.isFirst);
           },
         ),
       ),
