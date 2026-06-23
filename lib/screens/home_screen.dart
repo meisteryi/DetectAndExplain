@@ -6,6 +6,8 @@ import 'history_screen.dart';
 import 'text_selection_screen.dart';
 import '../providers/text_selection_provider.dart';
 
+import 'favorites_screen.dart';
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -50,6 +52,15 @@ class HomeScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.star_border_rounded),
+          tooltip: '즐겨찾기',
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const FavoritesScreen()),
+            );
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.history_rounded),

@@ -111,6 +111,17 @@ class FavoritesNotifier extends Notifier<List<FavoriteFolder>> {
     }).toList();
   }
 
+  void removeFromFolder(String folderId, String itemId) {
+    state = state.map((folder) {
+      if (folder.id == folderId) {
+        return folder.copyWith(
+          items: folder.items.where((item) => item.id != itemId).toList(),
+        );
+      }
+      return folder;
+    }).toList();
+  }
+
   bool isItemInFolder(String folderId, String originalText) {
     final folder = state.firstWhere((f) => f.id == folderId);
     return folder.items.any((item) => item.result.originalText == originalText);
