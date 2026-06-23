@@ -1,0 +1,3 @@
+class EnvKeys {
+  static const String geminiApiKey = 'GEMINI_API_KEY';
+}
