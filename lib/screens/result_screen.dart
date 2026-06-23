@@ -151,7 +151,9 @@ class ResultScreen extends ConsumerWidget {
                               color: Colors.deepPurple,
                             ),
                             onPressed: () {
-                              final ttsNotifier = ref.read(ttsProvider.notifier);
+                              final ttsNotifier = ref.read(
+                                ttsProvider.notifier,
+                              );
                               if (isTtsSpeaking) {
                                 ttsNotifier.stop();
                               } else {
@@ -175,7 +177,9 @@ class ResultScreen extends ConsumerWidget {
                               Text(
                                 '[발음] ${result.orderPhrasePronunciation}',
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
                                 ),
@@ -281,7 +285,8 @@ class _BuildResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          child ?? Text(content, style: contentStyle ?? theme.textTheme.bodyLarge),
+          child ??
+              Text(content, style: contentStyle ?? theme.textTheme.bodyLarge),
         ],
       ),
     );

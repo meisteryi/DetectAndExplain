@@ -21,13 +21,13 @@ class TranslationResult {
 
   factory TranslationResult.fromJson(Map<String, dynamic> json) {
     return TranslationResult(
-      originalText: json['original_text'] as String? ?? '',
-      translation: json['translation'] as String? ?? '',
-      context: json['context'] as String? ?? '',
-      tip: json['tip'] as String? ?? '',
-      orderPhraseJapanese: json['order_phrase_japanese'] as String? ?? '',
-      orderPhrasePronunciation: json['order_phrase_pronunciation'] as String? ?? '',
-      orderPhraseTranslation: json['order_phrase_translation'] as String? ?? '',
+      originalText: json['original_text']?.toString() ?? '',
+      translation: json['translation']?.toString() ?? '',
+      context: json['context']?.toString() ?? '',
+      tip: json['tip']?.toString() ?? '',
+      orderPhraseJapanese: json['order_phrase_japanese']?.toString() ?? '',
+      orderPhrasePronunciation: json['order_phrase_pronunciation']?.toString() ?? '',
+      orderPhraseTranslation: json['order_phrase_translation']?.toString() ?? '',
     );
   }
 

@@ -21,7 +21,7 @@ class DetectedTextBlock {
     }
 
     return DetectedTextBlock(
-      text: json['text'] as String? ?? '',
+      text: json['text']?.toString() ?? '',
       box2d: parsedBox.sublist(0, 4),
     );
   }
