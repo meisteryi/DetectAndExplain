@@ -137,6 +137,62 @@ class ResultScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
 
+                      // 3.5. Order Phrase Card
+                      if (result.orderPhraseJapanese.isNotEmpty) ...[
+                        _BuildResultCard(
+                          title: '현지 주문 예문',
+                          icon: Icons.chat_bubble_outline_rounded,
+                          iconColor: Colors.deepPurple,
+                          action: IconButton(
+                            icon: Icon(
+                              isTtsSpeaking
+                                  ? Icons.stop_circle_rounded
+                                  : Icons.volume_up_rounded,
+                              color: Colors.deepPurple,
+                            ),
+                            onPressed: () {
+                              final ttsNotifier = ref.read(ttsProvider.notifier);
+                              if (isTtsSpeaking) {
+                                ttsNotifier.stop();
+                              } else {
+                                ttsNotifier.speak(result.orderPhraseJapanese);
+                              }
+                            },
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                result.orderPhraseJapanese,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.primary,
+                                  fontSize: 20,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '[발음] ${result.orderPhrasePronunciation}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                '뜻: ${result.orderPhraseTranslation}',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       // 4. Practical Tip Card
                       _BuildResultCard(
                         title: '현지 이용 꿀팁',
@@ -165,14 +221,16 @@ class _BuildResultCard extends StatelessWidget {
   final String content;
   final TextStyle? contentStyle;
   final Widget? action;
+  final Widget? child;
 
   const _BuildResultCard({
     required this.title,
     required this.icon,
     required this.iconColor,
-    required this.content,
+    this.content = '',
     this.contentStyle,
     this.action,
+    this.child,
   });
 
   @override
@@ -223,7 +281,7 @@ class _BuildResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Text(content, style: contentStyle ?? theme.textTheme.bodyLarge),
+          child ?? Text(content, style: contentStyle ?? theme.textTheme.bodyLarge),
         ],
       ),
     );

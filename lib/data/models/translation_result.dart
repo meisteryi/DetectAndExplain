@@ -5,12 +5,18 @@ class TranslationResult {
   final String translation;
   final String context;
   final String tip;
+  final String orderPhraseJapanese;
+  final String orderPhrasePronunciation;
+  final String orderPhraseTranslation;
 
   TranslationResult({
     required this.originalText,
     required this.translation,
     required this.context,
     required this.tip,
+    required this.orderPhraseJapanese,
+    required this.orderPhrasePronunciation,
+    required this.orderPhraseTranslation,
   });
 
   factory TranslationResult.fromJson(Map<String, dynamic> json) {
@@ -19,6 +25,9 @@ class TranslationResult {
       translation: json['translation'] as String? ?? '',
       context: json['context'] as String? ?? '',
       tip: json['tip'] as String? ?? '',
+      orderPhraseJapanese: json['order_phrase_japanese'] as String? ?? '',
+      orderPhrasePronunciation: json['order_phrase_pronunciation'] as String? ?? '',
+      orderPhraseTranslation: json['order_phrase_translation'] as String? ?? '',
     );
   }
 
@@ -45,6 +54,9 @@ class TranslationResult {
         translation: '해석할 수 없는 형식의 응답입니다.',
         context: 'Gemini 응답 원본: \n$rawJson',
         tip: '다시 시도해 보거나 다른 구도로 촬영해 주세요.',
+        orderPhraseJapanese: '',
+        orderPhrasePronunciation: '',
+        orderPhraseTranslation: '',
       );
     }
   }
@@ -55,6 +67,9 @@ class TranslationResult {
       'translation': translation,
       'context': context,
       'tip': tip,
+      'order_phrase_japanese': orderPhraseJapanese,
+      'order_phrase_pronunciation': orderPhrasePronunciation,
+      'order_phrase_translation': orderPhraseTranslation,
     };
   }
 }
