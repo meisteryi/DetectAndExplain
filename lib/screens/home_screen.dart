@@ -142,7 +142,7 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 40),
                 Center(
                   child: Text(
-                    'Gemini 1.5 Flash Vision AI 기반 작동',
+                    'Gemini 2.5 Flash Lite AI 기반 작동',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontSize: 11,
                       color: colorScheme.onSurface.withValues(alpha: 0.4),
