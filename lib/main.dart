@@ -6,7 +6,7 @@ import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Load environment variables (.env file)
   try {
     await dotenv.load(fileName: '.env');
@@ -15,11 +15,7 @@ void main() async {
     debugPrint('Error loading .env file: $e');
   }
 
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
