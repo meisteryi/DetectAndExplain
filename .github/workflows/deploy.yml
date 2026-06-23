@@ -24,6 +24,7 @@ jobs:
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
           flutter pub get
           flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+          touch build/web/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
