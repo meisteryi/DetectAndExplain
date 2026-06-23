@@ -5,6 +5,8 @@ import '../providers/image_provider.dart';
 import '../providers/gemini_provider.dart';
 import '../providers/text_selection_provider.dart';
 import '../data/services/tts_service.dart';
+import '../providers/favorites_provider.dart';
+import '../data/models/translation_result.dart';
 
 class ResultScreen extends ConsumerWidget {
   const ResultScreen({super.key});
@@ -29,6 +31,35 @@ class ResultScreen extends ConsumerWidget {
             Navigator.of(context).popUntil((route) => route.isFirst);
           },
         ),
+        actions: [
+          geminiState.maybeWhen(
+            data: (result) {
+              if (result == null) return const SizedBox.shrink();
+              final isBookmarked = ref.watch(favoritesProvider).any(
+                    (folder) => folder.items.any(
+                      (item) => item.result.originalText == result.originalText,
+                    ),
+                  );
+
+              return IconButton(
+                icon: Icon(
+                  isBookmarked ? Icons.star_rounded : Icons.star_border_rounded,
+                  color: isBookmarked ? Colors.amber : null,
+                  size: 28,
+                ),
+                onPressed: () {
+                  _showFavoritesBottomSheet(
+                    context,
+                    ref,
+                    result,
+                    selectedImage?.path ?? '',
+                  );
+                },
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: geminiState.when(
         loading: () => _BuildLoadingState(imagePath: selectedImage?.path),
@@ -47,7 +78,7 @@ class ResultScreen extends ConsumerWidget {
         ),
         data: (result) {
           if (result == null) {
-            return const Center(child: Text('데이터가 없습니다.'));
+            return _BuildLoadingState(imagePath: selectedImage?.path);
           }
 
           return SingleChildScrollView(
@@ -136,6 +167,12 @@ class ResultScreen extends ConsumerWidget {
                         contentStyle: theme.textTheme.bodyLarge,
                       ),
                       const SizedBox(height: 16),
+
+                      // 3.2. Representative Photo Card
+                      if (result.imageKeyword.isNotEmpty) ...[
+                        _BuildPhotoCard(keyword: result.imageKeyword),
+                        const SizedBox(height: 16),
+                      ],
 
                       // 3.5. Order Phrase Card
                       if (result.orderPhraseJapanese.isNotEmpty) ...[
@@ -427,4 +464,347 @@ class _BuildErrorState extends StatelessWidget {
       ),
     );
   }
+}
+
+// Representative menu item photo card using Unsplash keywords
+class _BuildPhotoCard extends StatelessWidget {
+  final String keyword;
+
+  const _BuildPhotoCard({required this.keyword});
+
+  String _getPhotoUrl(String kw) {
+    final lower = kw.toLowerCase().trim();
+    if (lower.contains('ramen')) {
+      return 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('sushi')) {
+      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('udon')) {
+      return 'https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('soba')) {
+      return 'https://images.unsplash.com/photo-1548148107-73d8fa6712bb?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('tempura')) {
+      return 'https://images.unsplash.com/photo-1581264870020-f5a11df6a836?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('takoyaki')) {
+      return 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('okonomiyaki')) {
+      return 'https://images.unsplash.com/photo-1632731804961-0df8e792e347?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('katsu') || lower.contains('tonkatsu')) {
+      return 'https://images.unsplash.com/photo-1598511757337-fe2cadc7f993?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('curry')) {
+      return 'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('sake')) {
+      return 'https://images.unsplash.com/photo-1582450871972-ab5ca641643d?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('beer')) {
+      return 'https://images.unsplash.com/photo-1538248464754-00159b1531bb?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('matcha') || lower.contains('green tea')) {
+      return 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('wagyu') || lower.contains('beef') || lower.contains('meat')) {
+      return 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('train') || lower.contains('shinkansen') || lower.contains('subway')) {
+      return 'https://images.unsplash.com/photo-1542640244-7e672d6cef21?w=800&auto=format&fit=crop&q=80';
+    }
+    if (lower.contains('street') || lower.contains('sign') || lower.contains('map') || lower.contains('tokyo') || lower.contains('japan')) {
+      return 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800&auto=format&fit=crop&q=80';
+    }
+
+    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final photoUrl = _getPhotoUrl(keyword);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.onSurface.withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.image_search_rounded, size: 20, color: Colors.indigo),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '대표 참고 사진',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.network(
+              photoUrl,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: 180,
+                color: colorScheme.onSurface.withValues(alpha: 0.05),
+                child: Center(
+                  child: Icon(
+                    Icons.broken_image_rounded,
+                    color: colorScheme.onSurface.withValues(alpha: 0.2),
+                    size: 40,
+                  ),
+                ),
+              ),
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 180,
+                  color: colorScheme.onSurface.withValues(alpha: 0.03),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Favorites management bottom sheet modal
+void _showFavoritesBottomSheet(
+  BuildContext context,
+  WidgetRef ref,
+  TranslationResult result,
+  String imagePath,
+) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return Consumer(
+        builder: (context, ref, child) {
+          final folders = ref.watch(favoritesProvider);
+          final favoritesNotifier = ref.read(favoritesProvider.notifier);
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+
+          return Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.only(
+              top: 24,
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '즐겨찾기 폴더 선택',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: folders.length,
+                    itemBuilder: (context, index) {
+                      final folder = folders[index];
+                      final isInFolder = favoritesNotifier.isItemInFolder(folder.id, result.originalText);
+
+                      return ListTile(
+                        leading: Text(
+                          folder.emoji,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        title: Text(folder.name),
+                        trailing: Icon(
+                          isInFolder ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                          color: isInFolder ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.2),
+                        ),
+                        onTap: () {
+                          ref.read(favoritesProvider.notifier).toggleFavorite(folder.id, imagePath, result);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _showCreateFolderDialog(context, ref);
+                  },
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                  label: const Text('새 폴더 추가'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+// Dialog to create a new favorite folder with name and emoji
+void _showCreateFolderDialog(BuildContext context, WidgetRef ref) {
+  final nameController = TextEditingController();
+  final emojis = ['🍱', '🍜', '🍣', '🚇', '🛍️', '📌', '💡', '🗺️', '⚠️', '🇯🇵', '⭐', '📍'];
+  String selectedEmoji = emojis.first;
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('새 즐겨찾기 폴더'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: '폴더 이름',
+                      hintText: '예: 맛집 탐방, 교통 수단',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '아이콘 이모지 선택',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 100,
+                    width: 300,
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 6,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemCount: emojis.length,
+                      itemBuilder: (context, index) {
+                        final emoji = emojis[index];
+                        final isSelected = selectedEmoji == emoji;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              selectedEmoji = emoji;
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected ? colorScheme.primary.withValues(alpha: 0.1) : null,
+                              border: Border.all(
+                                color: isSelected ? colorScheme.primary : Colors.transparent,
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 24),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  if (name.isNotEmpty) {
+                    ref.read(favoritesProvider.notifier).createFolder(name, selectedEmoji);
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('만들기'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
 }

@@ -8,6 +8,7 @@ class TranslationResult {
   final String orderPhraseJapanese;
   final String orderPhrasePronunciation;
   final String orderPhraseTranslation;
+  final String imageKeyword;
 
   TranslationResult({
     required this.originalText,
@@ -17,6 +18,7 @@ class TranslationResult {
     required this.orderPhraseJapanese,
     required this.orderPhrasePronunciation,
     required this.orderPhraseTranslation,
+    required this.imageKeyword,
   });
 
   factory TranslationResult.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class TranslationResult {
       orderPhraseJapanese: json['order_phrase_japanese']?.toString() ?? '',
       orderPhrasePronunciation: json['order_phrase_pronunciation']?.toString() ?? '',
       orderPhraseTranslation: json['order_phrase_translation']?.toString() ?? '',
+      imageKeyword: json['image_keyword']?.toString() ?? '',
     );
   }
 
@@ -57,6 +60,7 @@ class TranslationResult {
         orderPhraseJapanese: '',
         orderPhrasePronunciation: '',
         orderPhraseTranslation: '',
+        imageKeyword: '',
       );
     }
   }
@@ -70,6 +74,7 @@ class TranslationResult {
       'order_phrase_japanese': orderPhraseJapanese,
       'order_phrase_pronunciation': orderPhrasePronunciation,
       'order_phrase_translation': orderPhraseTranslation,
+      'image_keyword': imageKeyword,
     };
   }
 }

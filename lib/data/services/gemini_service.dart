@@ -82,7 +82,7 @@ class GeminiService {
 
     final prompt = '너는 도쿄를 여행하는 한국인을 위한 현지 문화 가이드야. '
         '첨부된 이미지 전체 맥락과 특히 사용자가 선택한 일본어 텍스트 "$selectedText"를 상세 분석해줘. '
-        '선택된 단어의 정확한 번역, 문화적 배경/해설, 주문 꿀팁, 그리고 해당 단어(메뉴)를 활용해서 현지 점원에게 말할 수 있는 완전한 일본어 주문용 예문 문장을 함께 구성해서 다음 JSON 형식으로만 답변해줘.\n\n'
+        '선택된 단어의 정확한 번역, 문화적 배경/해설, 주문 꿀팁, 그리고 해당 단어(메뉴)를 활용해서 현지 점원에게 말할 수 있는 완전한 일본어 주문용 예문 문장, 그리고 해당 음식이나 물건의 대표 이미지를 Unsplash 등 무료 이미지 사이트에서 검색하는 데 필요한 구체적인 단일 영어 키워드를 함께 구성해서 다음 JSON 형식으로만 답변해줘.\n\n'
         '{\n'
         '  "original_text": "$selectedText",\n'
         '  "translation": "사용자가 선택한 텍스트에 대한 어울리는 한국어 번역",\n'
@@ -90,7 +90,8 @@ class GeminiService {
         '  "tip": "이 메뉴/매장에서 주문할 때 알아야 할 실전 꿀팁 또는 여행자용 유용한 정보",\n'
         '  "order_phrase_japanese": "해당 단어/메뉴를 활용해 일본어로 주문하거나 요청할 때 사용할 수 있는 완전한 일본어 문장 (예: [단어]를 하나 주세요, 혹은 [단어]를 빼주세요 등 상황에 맞는 유용한 일본어 문장)",\n'
         '  "order_phrase_pronunciation": "위의 order_phrase_japanese 문장의 자연스러운 한글 발음 표기 (예: "코레오 히토츠 쿠다사이")",\n'
-        '  "order_phrase_translation": "위의 order_phrase_japanese 일본어 문장의 한국어 뜻 (예: "이것을 하나 주세요")"\n'
+        '  "order_phrase_translation": "위의 order_phrase_japanese 일본어 문장의 한국어 뜻 (예: "이것을 하나 주세요")",\n'
+        '  "image_keyword": "해당 메뉴/대상을 잘 대표하는 구체적인 1~2단어의 영어 검색 키워드 (예: "ramen", "udon", "sushi", "greentea", "beer", "shinkansen" 등. 무조건 영어로 기입할 것)"\n'
         '}';
 
     final content = [
