@@ -180,6 +180,7 @@ class _BuildResultCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -219,7 +220,7 @@ class _BuildResultCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (action != null) action!,
+              ?action,
             ],
           ),
           const SizedBox(height: 14),
