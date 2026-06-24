@@ -111,6 +111,10 @@ class GeminiService {
       phraseExample = '请给我这个。';
       pronunciationExample = '칭 게이 워 쩌거';
       translationExample = '이것을 주세요.';
+    } else if (sourceLanguage == '스페인어') {
+      phraseExample = 'Uno más, por favor.';
+      pronunciationExample = '우노 마스, 포르 파보르';
+      translationExample = '하나 더 주세요.';
     } else {
       phraseExample = 'これを一つください。';
       pronunciationExample = '코레오 히토츠 쿠다사이';

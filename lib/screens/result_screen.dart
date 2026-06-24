@@ -7,6 +7,7 @@ import '../providers/text_selection_provider.dart';
 import '../data/services/tts_service.dart';
 import '../providers/favorites_provider.dart';
 import '../data/models/translation_result.dart';
+import 'package:flutter/foundation.dart';
 
 class ResultScreen extends ConsumerWidget {
   const ResultScreen({super.key});
@@ -104,10 +105,15 @@ class ResultScreen extends ConsumerWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      child: Image.file(
-                        File(selectedImage.path),
-                        fit: BoxFit.cover,
-                      ),
+                      child: kIsWeb
+                          ? Image.network(
+                              selectedImage.path,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              File(selectedImage.path),
+                              fit: BoxFit.cover,
+                            ),
                     ),
                   ),
 
@@ -343,7 +349,9 @@ class _BuildLoadingState extends StatelessWidget {
           Positioned.fill(
             child: Opacity(
               opacity: 0.3,
-              child: Image.file(File(imagePath!), fit: BoxFit.cover),
+              child: kIsWeb
+                  ? Image.network(imagePath!, fit: BoxFit.cover)
+                  : Image.file(File(imagePath!), fit: BoxFit.cover),
             ),
           ),
         Container(color: colorScheme.surface.withValues(alpha: 0.85)),

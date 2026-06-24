@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/image_provider.dart';
 import '../providers/text_selection_provider.dart';
 import '../providers/gemini_provider.dart';
+import 'package:flutter/foundation.dart';
 import '../providers/language_provider.dart';
 import 'result_screen.dart';
 
@@ -28,9 +29,11 @@ class _TextSelectionScreenState extends ConsumerState<TextSelectionScreen> {
     final imageFile = ref.read(imageProvider);
     if (imageFile == null) return;
 
-    final ImageStream stream = FileImage(
-      File(imageFile.path),
-    ).resolve(const ImageConfiguration());
+    final ImageProvider provider = kIsWeb
+        ? NetworkImage(imageFile.path)
+        : FileImage(File(imageFile.path));
+
+    final ImageStream stream = provider.resolve(const ImageConfiguration());
 
     stream.addListener(
       ImageStreamListener((ImageInfo info, bool _) {
@@ -162,10 +165,15 @@ class _TextSelectionScreenState extends ConsumerState<TextSelectionScreen> {
                                     children: [
                                       // The Image itself
                                       Positioned.fill(
-                                        child: Image.file(
-                                          File(imageFile.path),
-                                          fit: BoxFit.fill,
-                                        ),
+                                        child: kIsWeb
+                                            ? Image.network(
+                                                imageFile.path,
+                                                fit: BoxFit.fill,
+                                              )
+                                            : Image.file(
+                                                File(imageFile.path),
+                                                fit: BoxFit.fill,
+                                              ),
                                       ),
 
                                       // Clickable boxes
@@ -397,7 +405,9 @@ class _BuildDetectionLoadingState extends ConsumerWidget {
           Positioned.fill(
             child: Opacity(
               opacity: 0.2,
-              child: Image.file(File(imagePath!), fit: BoxFit.cover),
+              child: kIsWeb
+                  ? Image.network(imagePath!, fit: BoxFit.cover)
+                  : Image.file(File(imagePath!), fit: BoxFit.cover),
             ),
           ),
         Container(color: colorScheme.surface.withValues(alpha: 0.85)),

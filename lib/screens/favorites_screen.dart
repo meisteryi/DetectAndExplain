@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/image_provider.dart';
 import '../providers/gemini_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'result_screen.dart';
 
 class FavoritesScreen extends ConsumerWidget {
@@ -142,12 +143,19 @@ class FavoritesScreen extends ConsumerWidget {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(
-                                      File(item.imagePath),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const Icon(Icons.broken_image_rounded),
-                                    ),
+                                    child: kIsWeb
+                                        ? Image.network(
+                                            item.imagePath,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) =>
+                                                const Icon(Icons.broken_image_rounded),
+                                          )
+                                        : Image.file(
+                                            File(item.imagePath),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) =>
+                                                const Icon(Icons.broken_image_rounded),
+                                          ),
                                   ),
                                 ),
                                 title: Text(

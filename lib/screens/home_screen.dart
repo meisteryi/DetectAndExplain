@@ -18,7 +18,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _animationStarted = false;
-  final PageController _pageController = PageController(initialPage: 1);
+  final PageController _pageController = PageController(initialPage: 2);
 
   @override
   void initState() {
@@ -76,17 +76,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final activeLang = ref.watch(languageProvider);
     Color activeColor = colorScheme.primary;
-    int activeLangIndex = 1;
-    if (activeLang == LanguageMode.english) {
-      activeColor = Colors.blue.shade600;
+    int activeLangIndex = 2; // Default to Japanese (index 2)
+    if (activeLang == LanguageMode.spanish) {
+      activeColor = const Color(0xFFD48F00); // Dark yellow
       activeLangIndex = 0;
+    } else if (activeLang == LanguageMode.english) {
+      activeColor = Colors.blue.shade600;
+      activeLangIndex = 1;
     } else if (activeLang == LanguageMode.chinese) {
-      activeColor = const Color(0xFFB71C1C);
-      activeLangIndex = 2;
+      activeColor = const Color.fromARGB(255, 255, 40, 40);
+      activeLangIndex = 3;
     }
 
     String titleText = 'JPN';
-    if (activeLang == LanguageMode.english) {
+    if (activeLang == LanguageMode.spanish) {
+      titleText = 'ESP';
+    } else if (activeLang == LanguageMode.english) {
       titleText = 'ENG';
     } else if (activeLang == LanguageMode.chinese) {
       titleText = 'CHI';
@@ -179,14 +184,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               languageProvider.notifier,
                             );
                             if (index == 0) {
-                              notifier.setLanguage(LanguageMode.english);
+                              notifier.setLanguage(LanguageMode.spanish);
                             } else if (index == 1) {
-                              notifier.setLanguage(LanguageMode.japanese);
+                              notifier.setLanguage(LanguageMode.english);
                             } else if (index == 2) {
+                              notifier.setLanguage(LanguageMode.japanese);
+                            } else if (index == 3) {
                               notifier.setLanguage(LanguageMode.chinese);
                             }
                           },
                           children: [
+                            // Spanish
+                            _buildLogoPage(
+                              theme: theme,
+                              color: const Color(0xFFD48F00),
+                              title: 'TabiLenS',
+                              subtitle:
+                                  '스페인어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
+                              topLeftChar: 'Ñ',
+                              bottomRightChar: '밥',
+                            ),
                             // English
                             _buildLogoPage(
                               theme: theme,
@@ -224,7 +241,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       // Dot indicators
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(3, (index) {
+                        children: List.generate(4, (index) {
                           final isActive = activeLangIndex == index;
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 300),

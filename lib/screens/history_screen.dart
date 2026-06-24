@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/history_provider.dart';
 import '../providers/image_provider.dart';
 import '../providers/gemini_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'result_screen.dart';
 
 class HistoryScreen extends ConsumerWidget {
@@ -169,12 +170,19 @@ class HistoryScreen extends ConsumerWidget {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  File(item.imagePath),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(Icons.broken_image_rounded),
-                                ),
+                                child: kIsWeb
+                                    ? Image.network(
+                                        item.imagePath,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const Icon(Icons.broken_image_rounded),
+                                      )
+                                    : Image.file(
+                                        File(item.imagePath),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const Icon(Icons.broken_image_rounded),
+                                      ),
                               ),
                             ),
                             const SizedBox(width: 16),
