@@ -85,11 +85,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       activeLangIndex = 2;
     }
 
+    String titleText = 'JPN';
+    if (activeLang == LanguageMode.english) {
+      titleText = 'ENG';
+    } else if (activeLang == LanguageMode.chinese) {
+      titleText = 'CHI';
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        centerTitle: true,
+        title: AnimatedOpacity(
+          opacity: _animationStarted ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 800),
+          child: Text(
+            titleText,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ),
         leading: AnimatedOpacity(
           opacity: _animationStarted ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 800),

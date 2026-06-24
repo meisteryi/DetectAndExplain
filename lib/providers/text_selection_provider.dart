@@ -1,26 +1,30 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/models/detected_text_block.dart';
 import 'gemini_provider.dart';
 import 'language_provider.dart';
 
-
 class TextSelectionState {
   final AsyncValue<List<DetectedTextBlock>> blocks;
   final List<DetectedTextBlock> selectedBlocks;
+  final String loadingStatus;
 
   TextSelectionState({
     required this.blocks,
     required this.selectedBlocks,
+    this.loadingStatus = '',
   });
 
   TextSelectionState copyWith({
     AsyncValue<List<DetectedTextBlock>>? blocks,
     List<DetectedTextBlock>? selectedBlocks,
+    String? loadingStatus,
   }) {
     return TextSelectionState(
       blocks: blocks ?? this.blocks,
       selectedBlocks: selectedBlocks ?? this.selectedBlocks,
+      loadingStatus: loadingStatus ?? this.loadingStatus,
     );
   }
 
@@ -51,21 +55,32 @@ class TextSelectionNotifier extends Notifier<TextSelectionState> {
     return TextSelectionState(
       blocks: const AsyncData([]),
       selectedBlocks: [],
+      loadingStatus: '',
     );
   }
 
   Future<void> detectBlocks(XFile image) async {
-    state = state.copyWith(blocks: const AsyncLoading(), selectedBlocks: []);
+    state = state.copyWith(
+      blocks: const AsyncLoading(),
+      selectedBlocks: [],
+      loadingStatus: '메뉴판 이미지 파일을 읽고 있습니다...',
+    );
 
     final geminiService = ref.read(geminiServiceProvider);
     final activeLang = ref.read(languageProvider);
     
     final blocksState = await AsyncValue.guard(() async {
       final bytes = await image.readAsBytes();
-      return await geminiService.detectTextBlocks(bytes, sourceLanguage: activeLang.name);
+      return await geminiService.detectTextBlocks(
+        bytes,
+        sourceLanguage: activeLang.name,
+        onStatusChanged: (status) {
+          state = state.copyWith(loadingStatus: status);
+        },
+      );
     });
 
-    state = state.copyWith(blocks: blocksState);
+    state = state.copyWith(blocks: blocksState, loadingStatus: '');
   }
 
   void selectBlock(DetectedTextBlock block) {
@@ -82,6 +97,7 @@ class TextSelectionNotifier extends Notifier<TextSelectionState> {
     state = TextSelectionState(
       blocks: const AsyncData([]),
       selectedBlocks: [],
+      loadingStatus: '',
     );
   }
 }

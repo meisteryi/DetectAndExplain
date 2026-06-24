@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/image_provider.dart';
 import '../providers/text_selection_provider.dart';
 import '../providers/gemini_provider.dart';
+import '../providers/language_provider.dart';
 import 'result_screen.dart';
 
 class TextSelectionScreen extends ConsumerStatefulWidget {
@@ -372,15 +373,22 @@ class _TextSelectionScreenState extends ConsumerState<TextSelectionScreen> {
   }
 }
 
-class _BuildDetectionLoadingState extends StatelessWidget {
+class _BuildDetectionLoadingState extends ConsumerWidget {
   final String? imagePath;
 
   const _BuildDetectionLoadingState({this.imagePath});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final activeLang = ref.watch(languageProvider);
+    final selectionState = ref.watch(textSelectionProvider);
+
+    String statusTitle = '${activeLang.name} 텍스트 감지 중...';
+    String statusDesc = selectionState.loadingStatus.isNotEmpty
+        ? selectionState.loadingStatus
+        : 'AI가 사진 속 글씨 영역들을 찾고 있습니다.\n잠시만 기다려 주세요.';
 
     return Stack(
       fit: StackFit.expand,
@@ -409,7 +417,7 @@ class _BuildDetectionLoadingState extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                '일본어 텍스트 감지 중...',
+                statusTitle,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -417,7 +425,7 @@ class _BuildDetectionLoadingState extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'AI가 사진 속 글씨 영역들을 찾고 있습니다.\n잠시만 기다려 주세요.',
+                statusDesc,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),
