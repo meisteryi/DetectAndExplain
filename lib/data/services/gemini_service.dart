@@ -166,9 +166,12 @@ class GeminiService {
       'gemini-3.1-flash-lite',
     ];
 
+    // Shuffle the list of models to randomize the starting model and distribute quota load
+    final shuffledModels = List<String>.from(models)..shuffle();
+
     dynamic lastError;
 
-    for (final modelName in models) {
+    for (final modelName in shuffledModels) {
       final model = _createModel(modelName);
       int delaySeconds = 1;
       const int maxRetriesPerModel = 2;
