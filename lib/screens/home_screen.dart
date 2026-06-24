@@ -5,6 +5,7 @@ import '../providers/image_provider.dart';
 import 'history_screen.dart';
 import 'text_selection_screen.dart';
 import '../providers/text_selection_provider.dart';
+import '../providers/language_provider.dart';
 
 import 'favorites_screen.dart';
 
@@ -17,6 +18,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _animationStarted = false;
+  final PageController _pageController = PageController(initialPage: 1);
 
   @override
   void initState() {
@@ -29,6 +31,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _handleImageSelection(
@@ -65,6 +73,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    final activeLang = ref.watch(languageProvider);
+    Color activeColor = colorScheme.primary;
+    int activeLangIndex = 1;
+    if (activeLang == LanguageMode.english) {
+      activeColor = Colors.blue.shade600;
+      activeLangIndex = 0;
+    } else if (activeLang == LanguageMode.chinese) {
+      activeColor = const Color(0xFFB71C1C);
+      activeLangIndex = 2;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -106,21 +125,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       extendBodyBehindAppBar: true,
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
-              colorScheme.surface,
-            ],
+            colors: [activeColor.withValues(alpha: 0.20), colorScheme.surface],
           ),
         ),
         child: SafeArea(
           child: Stack(
             children: [
-              // 1. Splash / Logo Header (starts centered, slides up to top)
+              // 1. Splash / Logo Header (starts centered, slides up to top) with PageView
               AnimatedAlign(
                 alignment: _animationStarted
                     ? const Alignment(0, -0.45)
@@ -132,33 +150,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.translate_rounded,
-                          size: 56,
-                          color: colorScheme.primary,
+                      SizedBox(
+                        height: 160,
+                        child: PageView(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            final notifier = ref.read(
+                              languageProvider.notifier,
+                            );
+                            if (index == 0) {
+                              notifier.setLanguage(LanguageMode.english);
+                            } else if (index == 1) {
+                              notifier.setLanguage(LanguageMode.japanese);
+                            } else if (index == 2) {
+                              notifier.setLanguage(LanguageMode.chinese);
+                            }
+                          },
+                          children: [
+                            // English
+                            _buildLogoPage(
+                              theme: theme,
+                              color: Colors.blue.shade600,
+                              title: 'TabiLenS (EN)',
+                              subtitle:
+                                  '영어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
+                              topLeftChar: 'A',
+                              bottomRightChar: '밥',
+                            ),
+                            // Japanese
+                            _buildLogoPage(
+                              theme: theme,
+                              color: colorScheme.primary,
+                              title: 'TabiLenS',
+                              subtitle:
+                                  '일본 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
+                              topLeftChar: 'ハ',
+                              bottomRightChar: '밥',
+                            ),
+                            // Chinese
+                            _buildLogoPage(
+                              theme: theme,
+                              color: const Color(0xFFB71C1C),
+                              title: 'TabiLenS (CN)',
+                              subtitle:
+                                  '중국어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
+                              topLeftChar: '饭',
+                              bottomRightChar: '밥',
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'TabiLenS',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontSize: 32,
-                          letterSpacing: -1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '일본 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
+                      const SizedBox(height: 12),
+                      // Dot indicators
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(3, (index) {
+                          final isActive = activeLangIndex == index;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            height: 6,
+                            width: isActive ? 18 : 6,
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? activeColor
+                                  : colorScheme.onSurface.withValues(
+                                      alpha: 0.2,
+                                    ),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -189,8 +251,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           _BuildActionButton(
                             icon: Icons.camera_alt_rounded,
                             label: '카메라로 촬영하기',
-                            subtitle: '현지 메뉴를 촬영해 주세요',
-                            color: colorScheme.primary,
+                            subtitle: '${activeLang.name} 메뉴를 촬영해 주세요',
+                            color: activeColor,
                             onTap: () => _handleImageSelection(
                               context,
                               ImageSource.camera,
@@ -201,13 +263,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             icon: Icons.photo_library_rounded,
                             label: '갤러리에서 선택하기',
                             subtitle: '저장된 이미지에서 번역!',
-                            color: colorScheme.secondary,
+                            color: activeColor.withValues(alpha: 0.8),
                             onTap: () => _handleImageSelection(
                               context,
                               ImageSource.gallery,
                             ),
                           ),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 20),
                           Center(
                             child: Text(
                               'Gemini 기반 텍스트 인식 및 번역',
@@ -229,6 +291,139 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCustomTranslateIcon({
+    required Color color,
+    required String topLeftChar,
+    required String bottomRightChar,
+  }) {
+    return SizedBox(
+      width: 46,
+      height: 46,
+      child: Stack(
+        children: [
+          // 1. Left-Top Speech Bubble (Source Language)
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Container(
+              width: 27,
+              height: 27,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
+                  bottomLeft: Radius.circular(2),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 3,
+                    offset: const Offset(1, 1),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  topLeftChar,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 2. Right-Bottom Speech Bubble (Target Language - Korean)
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              width: 27,
+              height: 27,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: color, width: 1.8),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                  bottomLeft: Radius.circular(10),
+                  bottomRight: Radius.circular(2),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 3,
+                    offset: const Offset(1, 1),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  bottomRightChar,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoPage({
+    required ThemeData theme,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required String topLeftChar,
+    required String bottomRightChar,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: _buildCustomTranslateIcon(
+            color: color,
+            topLeftChar: topLeftChar,
+            bottomRightChar: bottomRightChar,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          title,
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontSize: 28,
+            letterSpacing: -1.0,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -258,7 +453,9 @@ class _BuildActionButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -270,7 +467,9 @@ class _BuildActionButton extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOut,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),

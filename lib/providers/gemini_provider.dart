@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/models/translation_result.dart';
 import '../data/services/gemini_service.dart';
+import 'language_provider.dart';
 
 import 'history_provider.dart';
 
@@ -23,7 +24,8 @@ class GeminiNotifier extends AsyncNotifier<TranslationResult?> {
     
     state = await AsyncValue.guard(() async {
       final service = ref.read(geminiServiceProvider);
-      final result = await service.analyzeSelectedText(selectedText);
+      final activeLang = ref.read(languageProvider);
+      final result = await service.analyzeSelectedText(selectedText, sourceLanguage: activeLang.name);
       
       // Save to scan history
       ref.read(historyProvider.notifier).addHistory(image, result);
