@@ -168,11 +168,7 @@ class ResultScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // 3.2. Representative Photo Card
-                      if (result.imageKeyword.isNotEmpty) ...[
-                        _BuildPhotoCard(keyword: result.imageKeyword),
-                        const SizedBox(height: 16),
-                      ],
+
 
                       // 3.5. Order Phrase Card
                       if (result.orderPhraseJapanese.isNotEmpty) ...[
@@ -467,143 +463,7 @@ class _BuildErrorState extends StatelessWidget {
 }
 
 // Representative menu item photo card using Unsplash keywords
-class _BuildPhotoCard extends StatelessWidget {
-  final String keyword;
 
-  const _BuildPhotoCard({required this.keyword});
-
-  String _getPhotoUrl(String kw) {
-    final lower = kw.toLowerCase().trim();
-    if (lower.contains('ramen')) {
-      return 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('sushi')) {
-      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('udon')) {
-      return 'https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('soba')) {
-      return 'https://images.unsplash.com/photo-1548148107-73d8fa6712bb?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('tempura')) {
-      return 'https://images.unsplash.com/photo-1581264870020-f5a11df6a836?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('takoyaki')) {
-      return 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('okonomiyaki')) {
-      return 'https://images.unsplash.com/photo-1632731804961-0df8e792e347?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('katsu') || lower.contains('tonkatsu')) {
-      return 'https://images.unsplash.com/photo-1598511757337-fe2cadc7f993?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('curry')) {
-      return 'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('sake')) {
-      return 'https://images.unsplash.com/photo-1582450871972-ab5ca641643d?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('beer')) {
-      return 'https://images.unsplash.com/photo-1538248464754-00159b1531bb?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('matcha') || lower.contains('green tea')) {
-      return 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('wagyu') || lower.contains('beef') || lower.contains('meat')) {
-      return 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('train') || lower.contains('shinkansen') || lower.contains('subway')) {
-      return 'https://images.unsplash.com/photo-1542640244-7e672d6cef21?w=800&auto=format&fit=crop&q=80';
-    }
-    if (lower.contains('street') || lower.contains('sign') || lower.contains('map') || lower.contains('tokyo') || lower.contains('japan')) {
-      return 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800&auto=format&fit=crop&q=80';
-    }
-
-    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final photoUrl = _getPhotoUrl(keyword);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colorScheme.onSurface.withValues(alpha: 0.05),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.image_search_rounded, size: 20, color: Colors.indigo),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '대표 참고 사진',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Image.network(
-              photoUrl,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 180,
-                color: colorScheme.onSurface.withValues(alpha: 0.05),
-                child: Center(
-                  child: Icon(
-                    Icons.broken_image_rounded,
-                    color: colorScheme.onSurface.withValues(alpha: 0.2),
-                    size: 40,
-                  ),
-                ),
-              ),
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  height: 180,
-                  color: colorScheme.onSurface.withValues(alpha: 0.03),
-                  child: const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // Favorites management bottom sheet modal
 void _showFavoritesBottomSheet(

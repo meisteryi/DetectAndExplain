@@ -16,9 +16,9 @@ class ImageNotifier extends Notifier<XFile?> {
     try {
       final XFile? pickedFile = await picker.pickImage(
         source: source,
-        imageQuality: 80,
-        maxWidth: 1200,
-        maxHeight: 1600,
+        imageQuality: 70,
+        maxWidth: 800,
+        maxHeight: 1000,
       );
       state = pickedFile;
     } catch (e) {
