@@ -115,6 +115,10 @@ class GeminiService {
       phraseExample = 'Uno más, por favor.';
       pronunciationExample = '우노 마스, 포르 파보르';
       translationExample = '하나 더 주세요.';
+    } else if (sourceLanguage == '프랑스어') {
+      phraseExample = 'Un autre, s\'il vous plaît.';
+      pronunciationExample = '앙 우트르, 실 부 플레';
+      translationExample = '하나 더 주세요.';
     } else {
       phraseExample = 'これを一つください。';
       pronunciationExample = '코레오 히토츠 쿠다사이';

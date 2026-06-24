@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum LanguageMode {
+  french(name: '프랑스어', englishName: 'French', colorCode: 'pink'),
   spanish(name: '스페인어', englishName: 'Spanish', colorCode: 'yellow'),
   english(name: '영어', englishName: 'English', colorCode: 'blue'),
   japanese(name: '일본어', englishName: 'Japanese', colorCode: 'purple'),
