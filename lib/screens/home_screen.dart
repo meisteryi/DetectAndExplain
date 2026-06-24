@@ -171,10 +171,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             _buildLogoPage(
                               theme: theme,
                               color: Colors.blue.shade600,
-                              title: 'TabiLenS (EN)',
+                              title: 'TabiLenS',
                               subtitle:
                                   '영어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                              topLeftChar: 'A',
+                              topLeftChar: 'R',
                               bottomRightChar: '밥',
                             ),
                             // Japanese
@@ -183,15 +183,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               color: colorScheme.primary,
                               title: 'TabiLenS',
                               subtitle:
-                                  '일본 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                              topLeftChar: 'ハ',
+                                  '일본어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
+                              topLeftChar: '飯',
                               bottomRightChar: '밥',
                             ),
                             // Chinese
                             _buildLogoPage(
                               theme: theme,
-                              color: const Color(0xFFB71C1C),
-                              title: 'TabiLenS (CN)',
+                              color: const Color.fromARGB(255, 255, 40, 40),
+                              title: 'TabiLenS',
                               subtitle:
                                   '중국어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
                               topLeftChar: '饭',

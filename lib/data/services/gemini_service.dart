@@ -50,8 +50,8 @@ class GeminiService {
       Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
     ];
 
-    return _executeWithModelFallback((model) async {
-      try {
+    try {
+      return await _executeWithModelFallback((model) async {
         final response = await model.generateContent(content);
         final rawText = response.text;
         if (rawText == null || rawText.isEmpty) {
@@ -72,10 +72,10 @@ class GeminiService {
         return parsed
             .map((e) => DetectedTextBlock.fromJson(e as Map<String, dynamic>))
             .toList();
-      } catch (e) {
-        throw Exception('텍스트 영역 인식에 실패했습니다: $e');
-      }
-    });
+      });
+    } catch (e) {
+      throw Exception('텍스트 영역 인식에 실패했습니다: $e');
+    }
   }
 
   /// 2. Perform deep translation and cultural analysis on only the selected text item (text-only for saving tokens)
@@ -102,24 +102,24 @@ class GeminiService {
         '  "context": "이 메뉴/단어의 유래, 역사, 상세한 음식 구성, 맛의 특징 등에 대한 문화적 해설",\n'
         '  "tip": "이 메뉴/매장에서 주문할 때 알아야 할 실전 꿀팁 또는 여행자용 유용한 정보",\n'
         '  "order_phrase_japanese": "해당 단어/메뉴를 활용해 현지어로 주문하거나 요청할 때 사용할 수 있는 완전한 현지어 문장 (예: [단어]를 하나 주세요, 혹은 [단어]를 빼주세요 등 상황에 맞는 유용한 현지어 문장)",\n'
-        '  "order_phrase_pronunciation": "위의 order_phrase_japanese 문장의 자연스러운 한글 발음 표기 (예: "코레오 히토츠 쿠다사이" 또는 "원 모어 플리즈" 등)",\n'
-        '  "order_phrase_translation": "위의 order_phrase_japanese 현지어 문장의 한국어 뜻 (예: "이것을 하나 주세요")"\n'
+        '  "order_phrase_pronunciation": "위의 order_phrase_japanese 문장의 자연스러운 한글 발음 표기 (예: \'코레오 히토츠 쿠다사이\' 또는 \'원 모어 플리즈\' 등)",\n'
+        '  "order_phrase_translation": "위의 order_phrase_japanese 현지어 문장의 한국어 뜻 (예: \'이것을 하나 주세요\')"\n'
         '}';
 
     final content = [Content.text(prompt)];
 
-    return _executeWithModelFallback((model) async {
-      try {
+    try {
+      return await _executeWithModelFallback((model) async {
         final response = await model.generateContent(content);
         final rawText = response.text;
         if (rawText == null || rawText.isEmpty) {
           throw Exception('Gemini API가 빈 응답을 반환했습니다.');
         }
         return TranslationResult.fromRawJson(rawText);
-      } catch (e) {
-        throw Exception('Gemini 상세 분석에 실패했습니다: $e');
-      }
-    });
+      });
+    } catch (e) {
+      throw Exception('Gemini 상세 분석에 실패했습니다: $e');
+    }
   }
 
   /// Helper to run API call with fallbacks for quota exceeded or model availability issues
@@ -130,7 +130,9 @@ class GeminiService {
       'gemini-2.5-flash',
       'gemini-2.5-flash-lite',
       'gemini-2.0-flash',
-      'gemini-2.0-flash-lite-preview-02-05',
+      'gemini-2.0-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
     ];
 
     dynamic lastError;
@@ -147,6 +149,9 @@ class GeminiService {
           lastError = e;
           final errorStr = e.toString().toLowerCase();
 
+          // ignore: avoid_print
+          print('Gemini 모델 $modelName 에러 발생 (시도 $attempt/$maxRetriesPerModel): $e');
+
           final isRateLimitOrOverload =
               errorStr.contains('429') ||
               errorStr.contains('quota exceeded') ||
@@ -162,17 +167,21 @@ class GeminiService {
               errorStr.contains('unknown model');
 
           if (isModelNotFoundError) {
-            // Model not supported in this region/sdk - fall back immediately
+            // ignore: avoid_print
+            print('$modelName 모델이 지원되지 않거나 찾을 수 없어 다음 모델로 넘어갑니다.');
             break;
           }
 
           if (isRateLimitOrOverload) {
             if (attempt < maxRetriesPerModel) {
+              // ignore: avoid_print
+              print('$modelName 호출 한도 초과/과부하로 인해 $delaySeconds초 대기 후 재시도합니다.');
               await Future.delayed(Duration(seconds: delaySeconds));
               delaySeconds *= 2;
               continue;
             } else {
-              // Exceeded retries on this model, fall back to next model
+              // ignore: avoid_print
+              print('$modelName 최대 시도 횟수 초과로 인해 다음 모델로 넘어갑니다.');
               break;
             }
           }
