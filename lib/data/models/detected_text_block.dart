@@ -3,10 +3,7 @@ class DetectedTextBlock {
   // Normalized coordinates: [ymin, xmin, ymax, xmax] (0 to 1000)
   final List<int> box2d;
 
-  DetectedTextBlock({
-    required this.text,
-    required this.box2d,
-  });
+  DetectedTextBlock({required this.text, required this.box2d});
 
   factory DetectedTextBlock.fromJson(Map<String, dynamic> json) {
     // Handle coordinates that might be double or int
@@ -27,9 +24,6 @@ class DetectedTextBlock {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'text': text,
-      'box_2d': box2d,
-    };
+    return {'text': text, 'box_2d': box2d};
   }
 }

@@ -6,6 +6,7 @@ import 'history_screen.dart';
 import 'text_selection_screen.dart';
 import '../providers/text_selection_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/shared_preferences_provider.dart';
 
 import 'favorites_screen.dart';
 
@@ -18,25 +19,116 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _animationStarted = false;
-  final PageController _pageController = PageController(initialPage: 3);
+  bool _isInitialSetup = false;
+  LanguageMode? _selectedSetupLanguage;
+  bool _isSetupDropdownOpen = false;
+  final LayerLink _layerLink = LayerLink();
+  bool _isMainDropdownOpen = false;
+  final LayerLink _mainLayerLink = LayerLink();
+
+  OverlayEntry? _mainDropdownOverlay;
 
   @override
   void initState() {
     super.initState();
-    // 1.2 seconds delay, then trigger slide up animation
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) {
-        setState(() {
-          _animationStarted = true;
+    try {
+      final prefs = ref.read(sharedPreferencesProvider);
+      final hasSetup = prefs.getBool('has_completed_language_setup') ?? false;
+      if (!hasSetup) {
+        _isInitialSetup = true;
+        _selectedSetupLanguage = LanguageMode.japanese;
+      } else {
+        // 1.2 seconds delay, then trigger slide up animation
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (mounted) {
+            setState(() {
+              _animationStarted = true;
+            });
+          }
         });
       }
-    });
+    } catch (e, stack) {
+      debugPrint('Error in initState: $e\n$stack');
+      // Fallback: Default to completed setup state to prevent screen lockup
+      _isInitialSetup = false;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _animationStarted = true;
+          });
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _closeMainDropdown();
     super.dispose();
+  }
+
+  void _openMainDropdown() {
+    _closeMainDropdown();
+    
+    setState(() {
+      _isMainDropdownOpen = true;
+    });
+
+    _mainDropdownOverlay = OverlayEntry(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        final activeLang = ref.watch(languageProvider);
+        final activeColor = _getLanguageColor(activeLang, colorScheme);
+
+        return Stack(
+          children: [
+            // Tap outside to close
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _closeMainDropdown,
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
+            CompositedTransformFollower(
+              link: _mainLayerLink,
+              showWhenUnlinked: false,
+              offset: const Offset(0, 36),
+              child: Align(
+                alignment: Alignment.topLeft,
+                widthFactor: 1.0,
+                heightFactor: 1.0,
+                child: _MainDropdownContent(
+                  activeLang: activeLang,
+                  activeColor: activeColor,
+                  colorScheme: colorScheme,
+                  theme: theme,
+                  onSelect: (mode) {
+                    ref.read(languageProvider.notifier).setLanguage(mode);
+                    _closeMainDropdown();
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_mainDropdownOverlay!);
+  }
+
+  void _closeMainDropdown() {
+    if (_mainDropdownOverlay != null) {
+      _mainDropdownOverlay!.remove();
+      _mainDropdownOverlay = null;
+      setState(() {
+        _isMainDropdownOpen = false;
+      });
+    }
   }
 
   Future<void> _handleImageSelection(
@@ -69,86 +161,260 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  static Color _getLanguageColor(LanguageMode lang, ColorScheme colorScheme) {
+    switch (lang) {
+      case LanguageMode.french:
+        return const Color(0xFFEC407A);
+      case LanguageMode.spanish:
+        return const Color(0xFFD48F00);
+      case LanguageMode.english:
+        return Colors.blue.shade600;
+      case LanguageMode.japanese:
+        return colorScheme.primary;
+      case LanguageMode.chinese:
+        return const Color.fromARGB(255, 255, 40, 40);
+    }
+  }
+
+  static String _getCountryDisplayName(LanguageMode lang) {
+    switch (lang) {
+      case LanguageMode.french:
+        return '프랑스 (France)';
+      case LanguageMode.spanish:
+        return '스페인 (Spain)';
+      case LanguageMode.english:
+        return '미국/영국 (USA/UK)';
+      case LanguageMode.japanese:
+        return '일본 (Japan)';
+      case LanguageMode.chinese:
+        return '중국 (China)';
+    }
+  }
+
+  Widget _buildLogoPageForLanguage(
+    LanguageMode lang,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    bool isInitialSetup,
+  ) {
+    final subtitleText = isInitialSetup
+        ? '어느 나라를 여행하고 있나요?'
+        : _getLanguageSubtitle(lang);
+
+    switch (lang) {
+      case LanguageMode.french:
+        return _buildLogoPage(
+          theme: theme,
+          color: const Color(0xFFEC407A),
+          title: 'TabiLenS',
+          subtitle: subtitleText,
+          topLeftChar: 'Ç',
+          bottomRightChar: '밥',
+          isInitialSetup: isInitialSetup,
+        );
+      case LanguageMode.spanish:
+        return _buildLogoPage(
+          theme: theme,
+          color: const Color(0xFFD48F00),
+          title: 'TabiLenS',
+          subtitle: subtitleText,
+          topLeftChar: 'Ñ',
+          bottomRightChar: '밥',
+          isInitialSetup: isInitialSetup,
+        );
+      case LanguageMode.english:
+        return _buildLogoPage(
+          theme: theme,
+          color: Colors.blue.shade600,
+          title: 'TabiLenS',
+          subtitle: subtitleText,
+          topLeftChar: 'E',
+          bottomRightChar: '밥',
+          isInitialSetup: isInitialSetup,
+        );
+      case LanguageMode.japanese:
+        return _buildLogoPage(
+          theme: theme,
+          color: colorScheme.primary,
+          title: 'TabiLenS',
+          subtitle: subtitleText,
+          topLeftChar: '飯',
+          bottomRightChar: '밥',
+          isInitialSetup: isInitialSetup,
+        );
+      case LanguageMode.chinese:
+        return _buildLogoPage(
+          theme: theme,
+          color: const Color.fromARGB(255, 255, 40, 40),
+          title: 'TabiLenS',
+          subtitle: subtitleText,
+          topLeftChar: '饭',
+          bottomRightChar: '밥',
+          isInitialSetup: isInitialSetup,
+        );
+    }
+  }
+
+  String _getLanguageSubtitle(LanguageMode lang) {
+    switch (lang) {
+      case LanguageMode.french:
+        return '프랑스어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.';
+      case LanguageMode.spanish:
+        return '스페인어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.';
+      case LanguageMode.english:
+        return '영어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.';
+      case LanguageMode.japanese:
+        return '일본어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.';
+      case LanguageMode.chinese:
+        return '중국어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final activeLang = ref.watch(languageProvider);
-    Color activeColor = colorScheme.primary;
-    int activeLangIndex = 3; // Default to Japanese (index 3)
-    if (activeLang == LanguageMode.french) {
-      activeColor = const Color(0xFFEC407A); // Pink
-      activeLangIndex = 0;
-    } else if (activeLang == LanguageMode.spanish) {
-      activeColor = const Color(0xFFD48F00); // Dark yellow
-      activeLangIndex = 1;
-    } else if (activeLang == LanguageMode.english) {
-      activeColor = Colors.blue.shade600;
-      activeLangIndex = 2;
-    } else if (activeLang == LanguageMode.chinese) {
-      activeColor = const Color.fromARGB(255, 255, 40, 40);
-      activeLangIndex = 4;
-    }
-
-    String titleText = 'JPN';
-    if (activeLang == LanguageMode.french) {
-      titleText = 'FRA';
-    } else if (activeLang == LanguageMode.spanish) {
-      titleText = 'ESP';
-    } else if (activeLang == LanguageMode.english) {
-      titleText = 'ENG';
-    } else if (activeLang == LanguageMode.chinese) {
-      titleText = 'CHI';
-    }
+    final activeLang = _isInitialSetup
+        ? (_selectedSetupLanguage ?? LanguageMode.japanese)
+        : ref.watch(languageProvider);
+    final activeColor = _getLanguageColor(activeLang, colorScheme);
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: true,
-        title: AnimatedOpacity(
-          opacity: _animationStarted ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 800),
-          child: Text(
-            titleText,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-        leading: AnimatedOpacity(
-          opacity: _animationStarted ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 800),
-          child: IconButton(
-            icon: const Icon(Icons.star_border_rounded),
-            tooltip: '즐겨찾기',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const FavoritesScreen(),
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          AnimatedOpacity(
-            opacity: _animationStarted ? 1.0 : 0.0,
+        centerTitle: false,
+        leadingWidth: 200,
+        leading: IgnorePointer(
+          ignoring: _isInitialSetup || !_animationStarted,
+          child: AnimatedOpacity(
+            opacity: _animationStarted && !_isInitialSetup ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 800),
-            child: IconButton(
-              icon: const Icon(Icons.history_rounded),
-              tooltip: '번역 기록',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const HistoryScreen(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.star_border_rounded),
+                tooltip: '즐겨찾기',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const FavoritesScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              CompositedTransformTarget(
+                link: _mainLayerLink,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    debugPrint('Main dropdown tapped! Current state: $_isMainDropdownOpen');
+                    if (_isMainDropdownOpen) {
+                      _closeMainDropdown();
+                    } else {
+                      _openMainDropdown();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: activeColor.withValues(alpha: 0.3),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _getLanguageColor(activeLang, colorScheme),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 80),
+                          child: Text(
+                            _getCountryDisplayName(activeLang),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              color: colorScheme.onSurface,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        AnimatedRotation(
+                          turns: _isMainDropdownOpen ? 0.5 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 14,
+                            color: activeColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                );
+                ),
+              ),
+            ],
+          ),
+        ),
+        ),
+                actions: [
+          if (!_isInitialSetup)
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: '초기 설정으로 돌아가기 (개발용)',
+              onPressed: () async {
+                final prefs = ref.read(sharedPreferencesProvider);
+                await prefs.remove('has_completed_language_setup');
+                setState(() {
+                  _isInitialSetup = true;
+                  _selectedSetupLanguage = LanguageMode.japanese;
+                  _animationStarted = false;
+                  _isMainDropdownOpen = false;
+                  _isSetupDropdownOpen = false;
+                });
               },
+            ),
+          IgnorePointer(
+            ignoring: _isInitialSetup || !_animationStarted,
+            child: AnimatedOpacity(
+              opacity: _animationStarted && !_isInitialSetup ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 800),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.history_rounded),
+                    tooltip: '번역 기록',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const HistoryScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -168,9 +434,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SafeArea(
           child: Stack(
             children: [
-              // 1. Splash / Logo Header (starts centered, slides up to top) with PageView
+              // 0. Transparent background blocker to close the custom dropdown when tapping outside
+              if (_isInitialSetup && _isSetupDropdownOpen)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      setState(() {
+                        _isSetupDropdownOpen = false;
+                      });
+                    },
+                    child: Container(
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
+              // 1. Splash / Logo Header (starts centered, slides up to top)
               AnimatedAlign(
-                alignment: _animationStarted
+                alignment: _animationStarted && !_isInitialSetup
                     ? const Alignment(0, -0.45)
                     : Alignment.center,
                 duration: const Duration(milliseconds: 1000),
@@ -182,116 +463,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       SizedBox(
                         height: 160,
-                        child: PageView(
-                          controller: _pageController,
-                          onPageChanged: (index) {
-                            final notifier = ref.read(
-                              languageProvider.notifier,
-                            );
-                            if (index == 0) {
-                              notifier.setLanguage(LanguageMode.french);
-                            } else if (index == 1) {
-                              notifier.setLanguage(LanguageMode.spanish);
-                            } else if (index == 2) {
-                              notifier.setLanguage(LanguageMode.english);
-                            } else if (index == 3) {
-                              notifier.setLanguage(LanguageMode.japanese);
-                            } else if (index == 4) {
-                              notifier.setLanguage(LanguageMode.chinese);
-                            }
-                          },
-                          children: [
-                            // French
-                            _buildLogoPage(
-                              theme: theme,
-                              color: const Color(0xFFEC407A),
-                              title: 'TabiLenS',
-                              subtitle:
-                                  '프랑스어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                              topLeftChar: 'Ç',
-                              bottomRightChar: '밥',
-                            ),
-                            // Spanish
-                            _buildLogoPage(
-                              theme: theme,
-                              color: const Color(0xFFD48F00),
-                              title: 'TabiLenS',
-                              subtitle:
-                                  '스페인어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                              topLeftChar: 'Ñ',
-                              bottomRightChar: '밥',
-                            ),
-                            // English
-                            _buildLogoPage(
-                              theme: theme,
-                              color: Colors.blue.shade600,
-                              title: 'TabiLenS',
-                              subtitle:
-                                  '영어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                              topLeftChar: 'E',
-                              bottomRightChar: '밥',
-                            ),
-                            // Japanese
-                            _buildLogoPage(
-                              theme: theme,
-                              color: colorScheme.primary,
-                              title: 'TabiLenS',
-                              subtitle:
-                                  '일본어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                              topLeftChar: '飯',
-                              bottomRightChar: '밥',
-                            ),
-                            // Chinese
-                            _buildLogoPage(
-                              theme: theme,
-                              color: const Color.fromARGB(255, 255, 40, 40),
-                              title: 'TabiLenS',
-                              subtitle:
-                                  '중국어 현지 메뉴판이 읽기 힘드신가요?\n음식의 이름과 꿀팁을 읽어보세요.',
-                              topLeftChar: '饭',
-                              bottomRightChar: '밥',
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Dot indicators
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(5, (index) {
-                          final isActive = activeLangIndex == index;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            height: 6,
-                            width: isActive ? 18 : 6,
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? activeColor
-                                  : colorScheme.onSurface.withValues(
-                                      alpha: 0.2,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 500),
+                          transitionBuilder: (child, animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position:
+                                    Tween<Offset>(
+                                      begin: const Offset(0, 0.1),
+                                      end: Offset.zero,
+                                    ).animate(
+                                      CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOutCubic,
+                                      ),
                                     ),
-                              borderRadius: BorderRadius.circular(3),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: KeyedSubtree(
+                            key: ValueKey(
+                              '${activeLang.name}_$_isInitialSetup',
                             ),
-                          );
-                        }),
+                            child: _buildLogoPageForLanguage(
+                              activeLang,
+                              theme,
+                              colorScheme,
+                              _isInitialSetup,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              // 2. Action Buttons & Version Text (fade in & slide up from bottom)
+              // 2. Initial Setup Controls (dropdown + confirm button) at the bottom
               Align(
-                alignment: Alignment.bottomCenter,
+                alignment: const Alignment(0, 0.65),
                 child: AnimatedOpacity(
-                  opacity: _animationStarted ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 800),
+                  opacity: _isInitialSetup ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 600),
                   child: AnimatedSlide(
-                    offset: _animationStarted
+                    offset: _isInitialSetup
                         ? Offset.zero
                         : const Offset(0, 0.15),
-                    duration: const Duration(milliseconds: 800),
+                    duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -302,45 +522,293 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _BuildActionButton(
-                            icon: Icons.camera_alt_rounded,
-                            label: '카메라로 촬영하기',
-                            subtitle: '${activeLang.name} 메뉴를 촬영해 주세요',
-                            color: activeColor,
-                            onTap: () => _handleImageSelection(
-                              context,
-                              ImageSource.camera,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _BuildActionButton(
-                            icon: Icons.photo_library_rounded,
-                            label: '갤러리에서 선택하기',
-                            subtitle: '저장된 이미지에서 번역!',
-                            color: activeColor.withValues(alpha: 0.8),
-                            onTap: () => _handleImageSelection(
-                              context,
-                              ImageSource.gallery,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Center(
-                            child: Text(
-                              'Gemini 기반 텍스트 인식 및 번역',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontSize: 11,
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.4,
+                          if (_isInitialSetup) ...[
+                            // Language Dropdown for Initial Setup
+                            CompositedTransformTarget(
+                              link: _layerLink,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _isSetupDropdownOpen = !_isSetupDropdownOpen;
+                                  });
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: activeColor.withValues(alpha: 0.3),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: _getLanguageColor(
+                                                _selectedSetupLanguage ?? LanguageMode.japanese,
+                                                colorScheme,
+                                              ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            _getCountryDisplayName(
+                                              _selectedSetupLanguage ?? LanguageMode.japanese,
+                                            ),
+                                            style: theme.textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      AnimatedRotation(
+                                        turns: _isSetupDropdownOpen ? 0.5 : 0.0,
+                                        duration: const Duration(milliseconds: 300),
+                                        child: Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: activeColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 24),
+                            // Confirm Button (Circular shape matching user request)
+                            Center(
+                              child: SizedBox(
+                                width: 56,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    if (_selectedSetupLanguage != null) {
+                                      ref
+                                          .read(languageProvider.notifier)
+                                          .setLanguage(_selectedSetupLanguage!);
+                                      final prefs = ref.read(
+                                        sharedPreferencesProvider,
+                                      );
+                                      prefs.setBool(
+                                        'has_completed_language_setup',
+                                        true,
+                                      );
+                                      setState(() {
+                                        _isInitialSetup = false;
+                                      });
+                                      Future.delayed(
+                                        const Duration(milliseconds: 100),
+                                        () {
+                                          if (mounted) {
+                                            setState(() {
+                                              _animationStarted = true;
+                                            });
+                                          }
+                                        },
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: activeColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 2,
+                                    shape: const CircleBorder(),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_rounded,
+                                    size: 28,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
                 ),
               ),
+
+              // 2. Action Buttons & Version Text (fade in & slide up from bottom)
+              IgnorePointer(
+                ignoring: _isInitialSetup || !_animationStarted,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: AnimatedOpacity(
+                    opacity: _animationStarted && !_isInitialSetup ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 800),
+                    child: AnimatedSlide(
+                      offset: _animationStarted && !_isInitialSetup
+                          ? Offset.zero
+                          : const Offset(0, 0.15),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOutCubic,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24.0,
+                          vertical: 16.0,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _BuildActionButton(
+                              icon: Icons.camera_alt_rounded,
+                              label: '카메라로 촬영하기',
+                              subtitle: '${activeLang.name} 메뉴를 촬영해 주세요',
+                              color: activeColor,
+                              onTap: () => _handleImageSelection(
+                                context,
+                                ImageSource.camera,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _BuildActionButton(
+                              icon: Icons.photo_library_rounded,
+                              label: '갤러리에서 선택하기',
+                              subtitle: '저장된 이미지에서 번역!',
+                              color: activeColor.withValues(alpha: 0.8),
+                              onTap: () => _handleImageSelection(
+                                context,
+                                ImageSource.gallery,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Center(
+                              child: Text(
+                                'Gemini 기반 텍스트 인식 및 번역',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 11,
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // 3. Floating Custom Dropdown Options list (using CompositedTransformFollower overlay)
+              if (_isInitialSetup && _isSetupDropdownOpen)
+                CompositedTransformFollower(
+                  link: _layerLink,
+                  showWhenUnlinked: false,
+                  offset: const Offset(0, 58), // Align just below the trigger box
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    widthFactor: 1.0,
+                    heightFactor: 1.0,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      width: MediaQuery.of(context).size.width - 48, // Match double padding 24
+                      height: _isSetupDropdownOpen ? 200 : 0,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withValues(
+                          alpha: _isSetupDropdownOpen ? 0.5 : 0.0,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _isSetupDropdownOpen
+                              ? activeColor.withValues(alpha: 0.3)
+                              : Colors.transparent,
+                          width: _isSetupDropdownOpen ? 1.5 : 0.0,
+                        ),
+                        boxShadow: _isSetupDropdownOpen
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: LanguageMode.values.map((mode) {
+                              final isSelected = _selectedSetupLanguage == mode;
+                              return Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedSetupLanguage = mode;
+                                      _isSetupDropdownOpen = false;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    color: isSelected
+                                        ? activeColor.withValues(alpha: 0.15)
+                                        : null,
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            color: _getLanguageColor(
+                                              mode,
+                                              colorScheme,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          _getCountryDisplayName(mode),
+                                          style: theme.textTheme.titleMedium?.copyWith(
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            color: colorScheme.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -443,6 +911,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required String subtitle,
     required String topLeftChar,
     required String bottomRightChar,
+    bool isInitialSetup = false,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -470,11 +939,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+        SizedBox(
+          height: 40,
+          child: Center(
+            child: Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: isInitialSetup
+                  ? theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: theme.colorScheme.onSurface,
+                    )
+                  : theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      height: 1.3,
+                    ),
+            ),
           ),
         ),
       ],
@@ -553,6 +1034,122 @@ class _BuildActionButton extends StatelessWidget {
                 color: colorScheme.onSurface.withValues(alpha: 0.3),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MainDropdownContent extends StatefulWidget {
+  final LanguageMode activeLang;
+  final Color activeColor;
+  final ColorScheme colorScheme;
+  final ThemeData theme;
+  final ValueChanged<LanguageMode> onSelect;
+
+  const _MainDropdownContent({
+    required this.activeLang,
+    required this.activeColor,
+    required this.colorScheme,
+    required this.theme,
+    required this.onSelect,
+  });
+
+  @override
+  State<_MainDropdownContent> createState() => _MainDropdownContentState();
+}
+
+class _MainDropdownContentState extends State<_MainDropdownContent> {
+  double _height = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _height = 200;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      width: 160,
+      height: _height,
+      decoration: BoxDecoration(
+        color: widget.colorScheme.surface.withValues(
+          alpha: 0.5,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: widget.activeColor.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: LanguageMode.values.map((mode) {
+              final isSelected = widget.activeLang == mode;
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => widget.onSelect(mode),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    color: isSelected
+                        ? widget.activeColor.withValues(alpha: 0.15)
+                        : null,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _HomeScreenState._getLanguageColor(
+                              mode,
+                              widget.colorScheme,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _HomeScreenState._getCountryDisplayName(mode),
+                            style: widget.theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 12,
+                              color: widget.colorScheme.onSurface,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ),
