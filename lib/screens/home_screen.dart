@@ -26,7 +26,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isMainDropdownOpen = false;
   final LayerLink _mainLayerLink = LayerLink();
 
+  OverlayEntry? _setupDropdownOverlay;
+  double _setupDropdownHeight = 0;
   OverlayEntry? _mainDropdownOverlay;
+  double _mainDropdownHeight = 0;
 
   @override
   void initState() {
@@ -63,15 +66,159 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _closeSetupDropdown();
     _closeMainDropdown();
     super.dispose();
   }
 
+  void _openSetupDropdown() {
+    if (_setupDropdownOverlay != null) return;
+    
+    setState(() {
+      _isSetupDropdownOpen = true;
+      _setupDropdownHeight = 0;
+    });
+
+    _setupDropdownOverlay = OverlayEntry(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        final activeLang = _selectedSetupLanguage ?? LanguageMode.japanese;
+        final activeColor = _getLanguageColor(activeLang, colorScheme);
+        final screenWidth = MediaQuery.of(context).size.width;
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _closeSetupDropdown,
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+            CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              offset: const Offset(0, 58),
+              child: Align(
+                alignment: Alignment.topLeft,
+                widthFactor: 1.0,
+                heightFactor: 1.0,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  width: screenWidth - 48,
+                  height: _setupDropdownHeight,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: activeColor.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: LanguageMode.values.map((mode) {
+                          final isSelected = _selectedSetupLanguage == mode;
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _selectedSetupLanguage = mode;
+                                });
+                                _closeSetupDropdown();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                color: isSelected
+                                    ? activeColor.withValues(alpha: 0.15)
+                                    : null,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: _getLanguageColor(mode, colorScheme),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      _getCountryDisplayName(mode),
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_setupDropdownOverlay!);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_setupDropdownOverlay != null) {
+        setState(() {
+          _setupDropdownHeight = 200;
+        });
+        _setupDropdownOverlay!.markNeedsBuild();
+      }
+    });
+  }
+
+  void _closeSetupDropdown() {
+    if (_setupDropdownOverlay == null) return;
+
+    setState(() {
+      _isSetupDropdownOpen = false;
+      _setupDropdownHeight = 0;
+    });
+    _setupDropdownOverlay!.markNeedsBuild();
+
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (_setupDropdownOverlay != null && !_isSetupDropdownOpen) {
+        _setupDropdownOverlay!.remove();
+        _setupDropdownOverlay = null;
+      }
+    });
+  }
+
   void _openMainDropdown() {
-    _closeMainDropdown();
+    if (_mainDropdownOverlay != null) return;
     
     setState(() {
       _isMainDropdownOpen = true;
+      _mainDropdownHeight = 0;
     });
 
     _mainDropdownOverlay = OverlayEntry(
@@ -83,14 +230,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         return Stack(
           children: [
-            // Tap outside to close
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: _closeMainDropdown,
-                child: Container(
-                  color: Colors.transparent,
-                ),
+                child: Container(color: Colors.transparent),
               ),
             ),
             CompositedTransformFollower(
@@ -101,15 +245,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 alignment: Alignment.topLeft,
                 widthFactor: 1.0,
                 heightFactor: 1.0,
-                child: _MainDropdownContent(
-                  activeLang: activeLang,
-                  activeColor: activeColor,
-                  colorScheme: colorScheme,
-                  theme: theme,
-                  onSelect: (mode) {
-                    ref.read(languageProvider.notifier).setLanguage(mode);
-                    _closeMainDropdown();
-                  },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  width: 160,
+                  height: _mainDropdownHeight,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: activeColor.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: LanguageMode.values.map((mode) {
+                          final isSelected = activeLang == mode;
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                ref.read(languageProvider.notifier).setLanguage(mode);
+                                _closeMainDropdown();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                color: isSelected
+                                    ? activeColor.withValues(alpha: 0.15)
+                                    : null,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: _getLanguageColor(mode, colorScheme),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _getCountryDisplayName(mode),
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                          fontSize: 12,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -119,16 +328,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
 
     Overlay.of(context).insert(_mainDropdownOverlay!);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_mainDropdownOverlay != null) {
+        setState(() {
+          _mainDropdownHeight = 200;
+        });
+        _mainDropdownOverlay!.markNeedsBuild();
+      }
+    });
   }
 
   void _closeMainDropdown() {
-    if (_mainDropdownOverlay != null) {
-      _mainDropdownOverlay!.remove();
-      _mainDropdownOverlay = null;
-      setState(() {
-        _isMainDropdownOpen = false;
-      });
-    }
+    if (_mainDropdownOverlay == null) return;
+
+    setState(() {
+      _isMainDropdownOpen = false;
+      _mainDropdownHeight = 0;
+    });
+    _mainDropdownOverlay!.markNeedsBuild();
+
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (_mainDropdownOverlay != null && !_isMainDropdownOpen) {
+        _mainDropdownOverlay!.remove();
+        _mainDropdownOverlay = null;
+      }
+    });
   }
 
   Future<void> _handleImageSelection(
@@ -378,22 +603,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         ),
                 actions: [
-          if (!_isInitialSetup)
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: '초기 설정으로 돌아가기 (개발용)',
-              onPressed: () async {
-                final prefs = ref.read(sharedPreferencesProvider);
-                await prefs.remove('has_completed_language_setup');
-                setState(() {
-                  _isInitialSetup = true;
-                  _selectedSetupLanguage = LanguageMode.japanese;
-                  _animationStarted = false;
-                  _isMainDropdownOpen = false;
-                  _isSetupDropdownOpen = false;
-                });
-              },
-            ),
           IgnorePointer(
             ignoring: _isInitialSetup || !_animationStarted,
             child: AnimatedOpacity(
@@ -402,6 +611,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: '초기 설정으로 돌아가기 (개발용)',
+                    onPressed: () async {
+                      final prefs = ref.read(sharedPreferencesProvider);
+                      await prefs.remove('has_completed_language_setup');
+                      setState(() {
+                        _isInitialSetup = true;
+                        _selectedSetupLanguage = LanguageMode.japanese;
+                        _animationStarted = false;
+                        _isMainDropdownOpen = false;
+                        _isSetupDropdownOpen = false;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 4),
                   IconButton(
                     icon: const Icon(Icons.history_rounded),
                     tooltip: '번역 기록',
@@ -434,21 +659,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SafeArea(
           child: Stack(
             children: [
-              // 0. Transparent background blocker to close the custom dropdown when tapping outside
-              if (_isInitialSetup && _isSetupDropdownOpen)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () {
-                      setState(() {
-                        _isSetupDropdownOpen = false;
-                      });
-                    },
-                    child: Container(
-                      color: Colors.transparent,
-                    ),
-                  ),
-                ),
               // 1. Splash / Logo Header (starts centered, slides up to top)
               AnimatedAlign(
                 alignment: _animationStarted && !_isInitialSetup
@@ -528,9 +738,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               link: _layerLink,
                               child: GestureDetector(
                                 onTap: () {
-                                  setState(() {
-                                    _isSetupDropdownOpen = !_isSetupDropdownOpen;
-                                  });
+                                  if (_isSetupDropdownOpen) {
+                                    _closeSetupDropdown();
+                                  } else {
+                                    _openSetupDropdown();
+                                  }
                                 },
                                 child: Container(
                                   width: double.infinity,
@@ -715,100 +927,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ),
-              // 3. Floating Custom Dropdown Options list (using CompositedTransformFollower overlay)
-              if (_isInitialSetup && _isSetupDropdownOpen)
-                CompositedTransformFollower(
-                  link: _layerLink,
-                  showWhenUnlinked: false,
-                  offset: const Offset(0, 58), // Align just below the trigger box
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    widthFactor: 1.0,
-                    heightFactor: 1.0,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      width: MediaQuery.of(context).size.width - 48, // Match double padding 24
-                      height: _isSetupDropdownOpen ? 200 : 0,
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface.withValues(
-                          alpha: _isSetupDropdownOpen ? 0.5 : 0.0,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: _isSetupDropdownOpen
-                              ? activeColor.withValues(alpha: 0.3)
-                              : Colors.transparent,
-                          width: _isSetupDropdownOpen ? 1.5 : 0.0,
-                        ),
-                        boxShadow: _isSetupDropdownOpen
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : [],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: LanguageMode.values.map((mode) {
-                              final isSelected = _selectedSetupLanguage == mode;
-                              return Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedSetupLanguage = mode;
-                                      _isSetupDropdownOpen = false;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
-                                    ),
-                                    color: isSelected
-                                        ? activeColor.withValues(alpha: 0.15)
-                                        : null,
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: _getLanguageColor(
-                                              mode,
-                                              colorScheme,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          _getCountryDisplayName(mode),
-                                          style: theme.textTheme.titleMedium?.copyWith(
-                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                            color: colorScheme.onSurface,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -1034,122 +1152,6 @@ class _BuildActionButton extends StatelessWidget {
                 color: colorScheme.onSurface.withValues(alpha: 0.3),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MainDropdownContent extends StatefulWidget {
-  final LanguageMode activeLang;
-  final Color activeColor;
-  final ColorScheme colorScheme;
-  final ThemeData theme;
-  final ValueChanged<LanguageMode> onSelect;
-
-  const _MainDropdownContent({
-    required this.activeLang,
-    required this.activeColor,
-    required this.colorScheme,
-    required this.theme,
-    required this.onSelect,
-  });
-
-  @override
-  State<_MainDropdownContent> createState() => _MainDropdownContentState();
-}
-
-class _MainDropdownContentState extends State<_MainDropdownContent> {
-  double _height = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {
-          _height = 200;
-        });
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-      width: 160,
-      height: _height,
-      decoration: BoxDecoration(
-        color: widget.colorScheme.surface.withValues(
-          alpha: 0.5,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: widget.activeColor.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: LanguageMode.values.map((mode) {
-              final isSelected = widget.activeLang == mode;
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => widget.onSelect(mode),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    color: isSelected
-                        ? widget.activeColor.withValues(alpha: 0.15)
-                        : null,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _HomeScreenState._getLanguageColor(
-                              mode,
-                              widget.colorScheme,
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _HomeScreenState._getCountryDisplayName(mode),
-                            style: widget.theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 12,
-                              color: widget.colorScheme.onSurface,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
           ),
         ),
       ),
