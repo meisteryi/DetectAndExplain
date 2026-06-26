@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/translation_result.dart';
@@ -7,6 +7,9 @@ import '../models/detected_text_block.dart';
 import '../../core/constants/env_keys.dart';
 
 class GeminiService {
+  // In-memory cache for detailed translations to avoid duplicate API calls
+  final Map<String, TranslationResult> _translationCache = {};
+
   GeminiService();
 
   GenerativeModel _createModel(String modelName) {
@@ -33,19 +36,21 @@ class GeminiService {
     }
 
     final prompt =
-        '너는 OCR 분석기이자 이미지 객체 탐지기야. '
+        '너는 OCR 분석기이자 이미지 객체 탐지기 및 번역기야. '
         '첨부된 $sourceLanguage 메뉴판 이미지에서 보이는 모든 주요 $sourceLanguage 텍스트 블록(가로쓰기, 세로쓰기, 간판, 손글씨, 메뉴 아이템 등)을 찾아줘. '
-        '각 텍스트 블록의 정확한 원문 내용과 이미지 내 위치(bounding box)를 반드시 다음 JSON 배열 형식으로만 대답해줘.\n\n'
+        '각 텍스트 블록의 원문 내용, 이미지 내 위치(bounding box), 그리고 해당 단어의 간결한 한국어 번역 명칭(설명 없이 핵심 뜻만 짧게)을 반드시 다음 JSON 배열 형식으로만 대답해줘.\n\n'
         '[\n'
         '  {\n'
-        '    "text": "$sourceLanguage 텍스트 내용",\n'
-        '    "box_2d": [ymin, xmin, ymax, xmax]\n'
+        '    "text": "$sourceLanguage 원문 텍스트 내용",\n'
+        '    "box_2d": [ymin, xmin, ymax, xmax],\n'
+        '    "translated_text": "간결한 한국어 번역 명칭 (예: 생맥주, 부침개)"\n'
         '  }\n'
         ']\n\n'
         '※ 중요 규칙:\n'
         '1. box_2d의 ymin, xmin, ymax, xmax 좌표값은 이미지의 전체 크기 대비 0에서 1000 사이의 상대적 정수 값이어야 해. (예: ymin이 이미지 꼭대기 근처라면 20~50, ymax가 이미지 아래쪽이라면 800~950)\n'
         '2. 글씨 위치가 미세하게 잘리거나 밀리는 문제를 방지하기 위해, 각 $sourceLanguage 텍스트 영역을 상하좌우로 10% 정도 넓게 충분히 감싸는 형태로 여유 있게 박스 영역(box_2d)을 설정해 줘.\n'
-        '3. 마크다운 기호 없이 순수 JSON 배열만 반환해줘.';
+        '3. translated_text는 긴 설명 없이 메뉴판에 표기하기 좋은 짧고 명확한 한글 번역명만 적어야 해.\n'
+        '4. 마크다운 기호 없이 순수 JSON 배열만 반환해줘.';
 
     final content = [
       Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
@@ -90,6 +95,12 @@ class GeminiService {
     String sourceLanguage = '일본어',
     void Function(String status)? onStatusChanged,
   }) async {
+    final cacheKey = '${sourceLanguage}_$selectedText';
+    if (_translationCache.containsKey(cacheKey)) {
+      debugPrint('[GeminiService] 로컬 캐시에서 번역 정보 호출: $cacheKey');
+      return _translationCache[cacheKey]!;
+    }
+
     final apiKey = dotenv.env[EnvKeys.geminiApiKey];
     if (apiKey == null ||
         apiKey.isEmpty ||
@@ -151,7 +162,9 @@ class GeminiService {
           if (rawText == null || rawText.isEmpty) {
             throw Exception('Gemini API가 빈 응답을 반환했습니다.');
           }
-          return TranslationResult.fromRawJson(rawText);
+          final result = TranslationResult.fromRawJson(rawText);
+          _translationCache[cacheKey] = result;
+          return result;
         },
         onStatusChanged: onStatusChanged,
       );

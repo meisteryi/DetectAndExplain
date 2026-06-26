@@ -65,6 +65,7 @@ class _TextSelectionScreenState extends ConsumerState<TextSelectionScreen> {
   Widget build(BuildContext context) {
     final imageFile = ref.watch(imageProvider);
     final selectionState = ref.watch(textSelectionProvider);
+    final activeLang = ref.watch(languageProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -112,7 +113,7 @@ class _TextSelectionScreenState extends ConsumerState<TextSelectionScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '사진 속 번역을 원하는 일본어 박스를 터치해 선택하세요.',
+                        '사진 속 번역을 원하는 ${activeLang.name} 박스를 터치해 선택하세요.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.primary,
                           fontWeight: FontWeight.w600,
@@ -161,118 +162,160 @@ class _TextSelectionScreenState extends ConsumerState<TextSelectionScreen> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(16),
-                                  child: Stack(
-                                    children: [
-                                      // The Image itself
-                                      Positioned.fill(
-                                        child: kIsWeb
-                                            ? Image.network(
-                                                imageFile.path,
-                                                fit: BoxFit.fill,
-                                              )
-                                            : Image.file(
-                                                File(imageFile.path),
-                                                fit: BoxFit.fill,
-                                              ),
-                                      ),
-
-                                      // Clickable boxes
-                                      ...blocks.map((block) {
-                                        // box2d: [ymin, xmin, ymax, xmax] (0 to 1000)
-                                        final double ymin =
-                                            block.box2d[0] *
-                                            renderedHeight /
-                                            1000;
-                                        final double xmin =
-                                            block.box2d[1] *
-                                            renderedWidth /
-                                            1000;
-                                        final double ymax =
-                                            block.box2d[2] *
-                                            renderedHeight /
-                                            1000;
-                                        final double xmax =
-                                            block.box2d[3] *
-                                            renderedWidth /
-                                            1000;
-
-                                        // Add a small rendering margin to prevent tight cropping or slight coordinate shifts
-                                        final double boxWidth = xmax - xmin;
-                                        final double boxHeight = ymax - ymin;
-                                        final double paddingX =
-                                            boxWidth * 0.05; // 5% padding
-                                        final double paddingY =
-                                            boxHeight * 0.05; // 5% padding
-                                        final double left = (xmin - paddingX)
-                                            .clamp(0.0, renderedWidth);
-                                        final double top = (ymin - paddingY)
-                                            .clamp(0.0, renderedHeight);
-                                        final double maxWidth =
-                                            (renderedWidth - left).clamp(
-                                              0.0,
-                                              renderedWidth,
-                                            );
-                                        final double maxHeight =
-                                            (renderedHeight - top).clamp(
-                                              0.0,
-                                              renderedHeight,
-                                            );
-                                        final double width =
-                                            (boxWidth + (paddingX * 2)).clamp(
-                                              0.0,
-                                              maxWidth,
-                                            );
-                                        final double height =
-                                            (boxHeight + (paddingY * 2)).clamp(
-                                              0.0,
-                                              maxHeight,
-                                            );
-
-                                        final isSelected = selectionState
-                                            .selectedBlocks
-                                            .contains(block);
-
-                                        return Positioned(
-                                          left: left,
-                                          top: top,
-                                          width: width,
-                                          height: height,
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              ref
-                                                  .read(
-                                                    textSelectionProvider
-                                                        .notifier,
-                                                  )
-                                                  .selectBlock(block);
-                                            },
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 150,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: isSelected
-                                                    ? colorScheme.primary
-                                                          .withValues(
-                                                            alpha: 0.25,
-                                                          )
-                                                    : Colors.transparent,
-                                                border: Border.all(
+                                  child: InteractiveViewer(
+                                    maxScale: 5.0,
+                                    child: Stack(
+                                      children: [
+                                        // The Image itself
+                                        Positioned.fill(
+                                          child: kIsWeb
+                                              ? Image.network(
+                                                  imageFile.path,
+                                                  fit: BoxFit.fill,
+                                                )
+                                              : Image.file(
+                                                  File(imageFile.path),
+                                                  fit: BoxFit.fill,
+                                                ),
+                                        ),
+  
+                                        // Clickable boxes
+                                        ...blocks.map((block) {
+                                          // box2d: [ymin, xmin, ymax, xmax] (0 to 1000)
+                                          final double ymin =
+                                              block.box2d[0] *
+                                              renderedHeight /
+                                              1000;
+                                          final double xmin =
+                                              block.box2d[1] *
+                                              renderedWidth /
+                                              1000;
+                                          final double ymax =
+                                              block.box2d[2] *
+                                              renderedHeight /
+                                              1000;
+                                          final double xmax =
+                                              block.box2d[3] *
+                                              renderedWidth /
+                                              1000;
+  
+                                          // Add a small rendering margin to prevent tight cropping or slight coordinate shifts
+                                          final double boxWidth = xmax - xmin;
+                                          final double boxHeight = ymax - ymin;
+                                          final double paddingX =
+                                              boxWidth * 0.05; // 5% padding
+                                          final double paddingY =
+                                              boxHeight * 0.05; // 5% padding
+                                          final double left = (xmin - paddingX)
+                                              .clamp(0.0, renderedWidth);
+                                          final double top = (ymin - paddingY)
+                                              .clamp(0.0, renderedHeight);
+                                          final double maxWidth =
+                                              (renderedWidth - left).clamp(
+                                                0.0,
+                                                renderedWidth,
+                                              );
+                                          final double maxHeight =
+                                              (renderedHeight - top).clamp(
+                                                0.0,
+                                                renderedHeight,
+                                              );
+                                          final double width =
+                                              (boxWidth + (paddingX * 2)).clamp(
+                                                0.0,
+                                                maxWidth,
+                                              );
+                                          final double height =
+                                              (boxHeight + (paddingY * 2)).clamp(
+                                                0.0,
+                                                maxHeight,
+                                              );
+  
+                                          final isSelected = selectionState
+                                              .selectedBlocks
+                                              .contains(block);
+  
+                                          return Positioned(
+                                            left: left,
+                                            top: top,
+                                            width: width,
+                                            height: height,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                ref
+                                                    .read(
+                                                      textSelectionProvider
+                                                          .notifier,
+                                                    )
+                                                    .selectBlock(block);
+                                              },
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 150,
+                                                ),
+                                                decoration: BoxDecoration(
                                                   color: isSelected
                                                       ? colorScheme.primary
-                                                      : Colors.amber.withValues(
-                                                          alpha: 0.6,
+                                                            .withValues(
+                                                              alpha: 0.25,
+                                                            )
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.15,
                                                         ),
-                                                  width: isSelected ? 2.5 : 1.5,
+                                                  border: Border.all(
+                                                    color: isSelected
+                                                        ? colorScheme.primary
+                                                        : Colors.amber.withValues(
+                                                            alpha: 0.6,
+                                                          ),
+                                                    width: isSelected ? 2.5 : 1.5,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
                                                 ),
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
+                                                child: block.translatedText != null &&
+                                                        block.translatedText!.isNotEmpty
+                                                    ? Center(
+                                                        child: Padding(
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 2.0,
+                                                          ),
+                                                          child: FittedBox(
+                                                            fit: BoxFit.scaleDown,
+                                                            child: Container(
+                                                              padding: const EdgeInsets.symmetric(
+                                                                horizontal: 4,
+                                                                vertical: 2,
+                                                              ),
+                                                              decoration: BoxDecoration(
+                                                                color: (isSelected
+                                                                        ? colorScheme.primary
+                                                                        : Colors.black)
+                                                                    .withValues(
+                                                                  alpha: 0.65,
+                                                                ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(4),
+                                                              ),
+                                                              child: Text(
+                                                                block.translatedText!,
+                                                                style: const TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: 10,
+                                                                  fontWeight: FontWeight.bold,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : null,
                                               ),
                                             ),
-                                          ),
-                                        );
-                                      }),
-                                    ],
+                                          );
+                                        }),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -359,7 +402,7 @@ class _TextSelectionScreenState extends ConsumerState<TextSelectionScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              '일본어 박스를 선택해 주세요.',
+                              '${activeLang.name} 박스를 선택해 주세요.',
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: colorScheme.onSurface.withValues(
                                   alpha: 0.4,
