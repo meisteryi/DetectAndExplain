@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/history_provider.dart';
 import '../providers/image_provider.dart';
 import '../providers/gemini_provider.dart';
+import '../providers/favorites_provider.dart';
+import '../data/models/history_item.dart';
 import 'package:flutter/foundation.dart';
 import 'result_screen.dart';
 
@@ -111,8 +113,21 @@ class HistoryScreen extends ConsumerWidget {
 
                 return Dismissible(
                   key: Key(item.id),
-                  direction: DismissDirection.endToStart,
+                  direction: DismissDirection.horizontal,
                   background: Container(
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.bookmark_add_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  secondaryBackground: Container(
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: BoxDecoration(
@@ -125,14 +140,25 @@ class HistoryScreen extends ConsumerWidget {
                       size: 28,
                     ),
                   ),
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.endToStart) {
+                      return true;
+                    } else if (direction == DismissDirection.startToEnd) {
+                      _showFolderSelectionBottomSheet(context, ref, item);
+                      return false;
+                    }
+                    return false;
+                  },
                   onDismissed: (direction) {
-                    ref.read(historyProvider.notifier).deleteHistory(item.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('번역 기록이 삭제되었습니다.'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
+                    if (direction == DismissDirection.endToStart) {
+                      ref.read(historyProvider.notifier).deleteHistory(item.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('번역 기록이 삭제되었습니다.'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
                   child: Card(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -239,6 +265,185 @@ class HistoryScreen extends ConsumerWidget {
                 );
               },
             ),
+    );
+  }
+
+  void _showFolderSelectionBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    HistoryItem item,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Consumer(
+          builder: (context, ref, child) {
+            final folders = ref.watch(favoritesProvider);
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '즐겨찾기 폴더 선택',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.create_new_folder_outlined),
+                          color: colorScheme.primary,
+                          tooltip: '새 폴더 추가',
+                          onPressed: () => _showCreateFolderDialog(context, ref),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (folders.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text('폴더가 없습니다.'),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: folders.length,
+                          itemBuilder: (context, index) {
+                            final folder = folders[index];
+                            final isAdded = ref
+                                .read(favoritesProvider.notifier)
+                                .isItemInFolder(
+                                  folder.id,
+                                  item.result.originalText,
+                                );
+
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              leading: Text(
+                                folder.emoji,
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                              title: Text(
+                                folder.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text('항목 ${folder.items.length}개'),
+                              trailing: Icon(
+                                isAdded
+                                    ? Icons.bookmark_added_rounded
+                                    : Icons.bookmark_add_outlined,
+                                color: isAdded
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface.withValues(
+                                        alpha: 0.4,
+                                      ),
+                              ),
+                              onTap: () {
+                                ref
+                                    .read(favoritesProvider.notifier)
+                                    .toggleFavorite(
+                                      folder.id,
+                                      item.imagePath,
+                                      item.result,
+                                    );
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      isAdded
+                                          ? '${folder.name}에서 제거되었습니다.'
+                                          : '${folder.name}에 추가되었습니다.',
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showCreateFolderDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final emojiController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('새 폴더 추가'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: '폴더 이름',
+                  hintText: '예: 맛집 메뉴, 필수 단어',
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emojiController,
+                decoration: const InputDecoration(
+                  labelText: '대표 이모지 (선택)',
+                  hintText: '예: 🍣, ⭐, 📁',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                final emoji = emojiController.text.trim();
+                if (name.isNotEmpty) {
+                  ref
+                      .read(favoritesProvider.notifier)
+                      .createFolder(name, emoji);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('만들기'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
